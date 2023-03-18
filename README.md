@@ -6,8 +6,8 @@ SYSTEM DESIGN OF WEB CRAWLER
        Docker
        Aws
        Nodejs
-       RabbitMq as queue manager
-       Puppeeter as web scraper
+       RabbitMq for queue manager
+       Puppeeter for web scraper
        Redis as low latency persistent storage
 
     Functional components of web crawler
