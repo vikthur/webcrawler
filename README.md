@@ -8,25 +8,33 @@ SYSTEM DESIGN OF WEB CRAWLER
        Nodejs
        RabbitMq for queue manager
        Puppeeter for web scraper
-       Redis as low latency persistent storage
+       Mongodb as low latency persistent storage
 
-    Functional components of web crawler
+    Architecture of web crawler
 
-Proxy Function:
+Proxy Server Microservice:
 -publish new ip address for new request
-
-Connector Function:
--recieve root url
--call Proxy Function.
 -push intial or root url to queue.
 
-Parser Function:
+Parser Microservice:
+-request ip from proxy server microservice.
 -consume root url from queue.
 -call Validator function.
 -scrape out urls from Root url.
 -call Duplicate checker function.
 -save url found to Queue.
--save url to persistent storage e.g Redis.
+-save url to persistent storage e.g mongodb
+
+Client Microservice:
+
+- collect root url from user request.
+- push root url to queue
+- stream urls to the user interface.
+- call pagination handler.
+
+Captcha Microservice:
+
+- solve Captchas
 
 Validator Function:
 
@@ -37,14 +45,3 @@ Duplicate Checker Function:
 
 - Take in an array of url as argument.
 - return an array without duplicate.
-
-Client Function:
-
-- stream urls to the user interface.
-- call pagination handler.
-
-Captcha Function:
-
-- solve Captchas
-
-FLOWCHART OF WEBCRAWLER
