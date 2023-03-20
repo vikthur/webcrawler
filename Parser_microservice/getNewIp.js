@@ -2,12 +2,12 @@ const axios = require("axios");
 require("dotenv").config();
 
 async function getNewIp() {
-  let i;
+  let IP;
   await axios.get("http://localhost:5000").then((res) => {
-    res.data ? (i = res.data) : null;
+    res.data ? (IP = res.data) : null;
   });
 
-  return i;
+  return IP;
 }
 
 module.exports = { getNewIp };

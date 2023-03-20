@@ -4,7 +4,7 @@ let proxyServer = getNewIp();
 proxyServer
   .then((result) => {
     if (result) {
-      console.log(result, "dhhhhhhh");
+      console.log(result, "IP");
     }
   })
   .catch((err) => {

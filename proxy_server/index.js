@@ -24,6 +24,8 @@ app.get("/", async (req, res) => {
   }
 });
 
-app.listen(process.env.PORT, () =>
-  console.log(`proxy server is running on port ${process.env.PORT}!`)
+app.listen(process.env.PROXY_MICROSERVICE_PORT, () =>
+  console.log(
+    `proxy server is running on port ${process.env.PROXY_MICROSERVICE_PORT}!`
+  )
 );
