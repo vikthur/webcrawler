@@ -28,7 +28,7 @@ Parser Microservice:
 Client Microservice:
 
 - collect root url from user request.
-- push root url to queue
+- post root url to parser microservice (initiate program).
 - stream urls to the user interface.
 - call pagination handler.
 
