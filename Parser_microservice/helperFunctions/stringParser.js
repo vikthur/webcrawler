@@ -21,4 +21,9 @@ function urlIncludesHTTPS(arr) {
   return result;
 }
 
-module.exports = { urlParser, urlIncludesHTTPS };
+function objSchema(url, textContent, pageTitle) {
+  const schema = console.log(schema, "schema");
+  return schema;
+}
+
+module.exports = { urlParser, urlIncludesHTTPS, objSchema };
