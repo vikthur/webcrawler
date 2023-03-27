@@ -17,13 +17,17 @@ const crawler = async (channel) => {
     },
     skipDuplicateUrls: true,
   });
+
+  // handling error in puppeteer cluster
   cluster.on("taskerror", (err, data) => {
     console.log(`Error crawling ${data}: ${err.message}`);
   });
   await cluster.task(async ({ page, data: url }) => {
     try {
+      // going the the url
       await page.goto(url);
 
+      // proxy connection for rotating ip for each url request
       await page.setRequestInterception(true);
       page.on("request", async (request) => {
         await useProxy(request, {
@@ -37,12 +41,18 @@ const crawler = async (channel) => {
         });
       });
 
+      // get the raw html contents including url links and text content from the url
       let rawHtml = await page.evaluate(() => document.body.innerHTML);
+
+      // getting the textcontent only
       let htmlTextContent = await page.evaluate(
         () => document.body.textContent
       );
+
+      // getting the links from the raw html
       let URLS = stringParser.urlParser(rawHtml);
 
+      // extract useful and non duplicate keyword sentences from the text content
       function extractMeaningfulSentences(text) {
         text = text.substring(100, 30);
         text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "");
@@ -63,6 +73,8 @@ const crawler = async (channel) => {
         const uniqueSentences = Array.from(new Set(meaningfulSentences));
         return uniqueSentences.toString();
       }
+
+      // getting the page title
       const pageTitle = await page.evaluate(() => document.title);
       htmlTextContent = extractMeaningfulSentences(htmlTextContent);
       URLS = stringParser.urlIncludesHTTPS(URLS);
@@ -81,8 +93,9 @@ const crawler = async (channel) => {
         schema.url = url;
         pageTitleArray.forEach((title) => (schema.title = title));
 
-        // check for already visted array from de db
-        // remove duplicate urls
+        // run validator function
+        // run duplicate checker function here
+        console.log(schema, "objschema");
         pushToChannel(schema, channel, TO_BE_VISITED_QUEUE);
       });
     } catch (error) {
@@ -90,6 +103,7 @@ const crawler = async (channel) => {
     }
   });
 
+  // this is where the crawler consume the starting url from the queue
   await channel.assertQueue(TO_BE_VISITED_QUEUE, { durable: false });
   await channel.consume(
     TO_BE_VISITED_QUEUE,
