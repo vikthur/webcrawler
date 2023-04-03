@@ -45,3 +45,14 @@ Duplicate Checker Function:
 
 - Take in an array of url as argument.
 - return an array without duplicate.
+
+// post from frontend with the starting url.
+// starting url will be published to the queue(rabbitmq)
+// call the validator function to check the database for ready urls
+// the function of the validator function to prevent
+// the engine crawler consumed from the queue.
+// filter the content gotten from the url e.g urls, text content.
+// call or run duplicate checker function to remove duplicate urls.
+// save the urls gotten from the root url.
+// push the url to the queue to scraped again.
+// result pushed to the user_UI_frontend.
