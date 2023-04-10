@@ -1,119 +1,121 @@
-const express = require("express");
-const amqp = require("amqplib");
-const puppeteer = require("puppeteer");
+const express = require("express")
+const { crawlerEngine } = require("./crawlerEngine")
+const app = express()
+const { Page } = require("./Model")
+const mongoose = require('mongoose');
+const cors = require("cors")
+const amqp = require('amqplib');
 const { Cluster } = require("puppeteer-cluster");
-const app = express();
-const cors = require("cors");
-// Connect to RabbitMQ and create the queue
-const queue = "urls_be_visited_queue";
-let connection;
-let channel;
-async function mq() {
-  try {
-    connection = await amqp.connect(
-      "amqps://abtelwui:Bihbk5TijVstBW0hMGUr_stRDimNbzqn@shrimp.rmq.cloudamqp.com/abtelwui"
-    );
-    console.log("rabbit connected");
-    channel = await connection.createChannel();
-    await channel.assertQueue(queue, { durable: true });
-  } catch (err) {
+
+const rabbitUrl =
+  "amqps://abtelwui:Bihbk5TijVstBW0hMGUr_stRDimNbzqn@shrimp.rmq.cloudamqp.com/abtelwui";
+// Connect to MongoDB
+mongoose.connect("mongodb+srv://web_crawler:JY2UeSsoHDuntlEJ@cluster0.mnmpkso.mongodb.net/?retryWrites=true&w=majority", {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+}).then(() => {
+  console.log('Connected to database');
+})
+  .catch((err) => {
     console.error(err);
-  }
-}
-
-mq();
-
-app.use(
-  cors({
-    origin: "*",
-    optionsSuccessStatus: 200,
   })
-);
-app.use(cors());
-app.use(express.json());
-app.use(express());
 
-// Set up route to accept website URL and crawling depth from frontend
-app.post("/", async (req, res) => {
-  console.log("recieving url");
-  // global variables
-  let results = [];
-  const websiteUrl = req?.body?.url;
+app.use(cors())
 
-  // Set up Puppeteer cluster
-  const cluster = await Cluster.launch({
-    concurrency: Cluster.CONCURRENCY_CONTEXT,
-    maxConcurrency: 1, // number of workers
-  });
 
-  // Push the initial URL to the queue
-  console.log("Push the initial URL to the queue");
+const captchaRouter = require("./capt");
+app.use("/solve-captcha", captchaRouter);
+
+let STOP_CRAWLER_STATUS = false
+
+// get user input 
+app.get("/", async (req, res) => {
+  const url = req.query.url || "https://example.com";
+  const depth = parseInt(req.query.depth) || 1;
+  STOP_CRAWLER_STATUS = false
   try {
-    channel.sendToQueue(
-      queue,
-      Buffer.from(JSON.stringify({ url: websiteUrl }))
-    );
+    crawlerEngine(Cluster, url, depth)
+    await amqp.connect(rabbitUrl).then(async (conn) => {
+      await conn.createChannel().then(async (channel) => {
+        const queueName = 'myQueue';
+
+        await channel.assertQueue(queueName, { durable: false });
+
+        await channel.consume(queueName, (msg) => {
+          const message = msg.content.toString();
+
+          res.send({ ip: message, message: "crawler engine initiated" });
+
+          console.log('Received message:', message);
+        }, { noAck: true });
+      });
+    }).catch((err) => {
+      console.error('Error connecting to RabbitMQ:', err);
+    });
+
   } catch (error) {
-    console.log(error);
+    console.log(error)
   }
 
-  // Consume messages from the queue
-  console.log(" Consume messages from the queue");
+
+})
+
+
+// get paginated result
+app.get("/urls", async (req, res) => {
+
+  const { page = 1, limit = 1 } = req.query;
 
   try {
-    if (!channel && !channel.isOpen()) return;
+    const urls = await Page.find()
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .exec();
 
-    channel.consume(
-      queue,
-      async (msg) => {
-        const { url } = JSON.parse(msg.content.toString());
-        // channel.ack(msg);
+    const count = await Page.countDocuments();
 
-        try {
-          // Use Puppeteer cluster to crawl the URL
-          console.log("Use Puppeteer cluster to crawl the URL");
-          const result = await cluster.execute(url, async ({ page }) => {
-            if (url === "" || null) return;
-            console.log("visiting the url.......");
-            // visiting the url
-            await page.goto(url);
-            // getting the url title
-            const title = await page.title();
-            // getting the page link
-            const linksFound = await page.$$eval("a", (a) =>
-              a.map((l) => l.href)
-            );
-            console.log("collecting links.......");
-
-            return { url, title, linksFound };
-          });
-
-          console.log("pushing links.......to array");
-          results.push(result);
-        } catch (err) {
-          console.error(err);
-        }
-
-        if (results.length === 1) {
-          console.log("sending result.......as response");
-          res.status(200).send(results);
-          await cluster.close();
-          console.log("channel closed");
-        }
-      },
-      { noAck: true }
-    );
+    res.json({
+      totalPages: Math.ceil(count / limit),
+      currentPage: page,
+      urls,
+      count
+    });
   } catch (err) {
     console.error(err);
-    await cluster.close();
-    await channel.close();
-    await connection.close();
-    return res
-      .status(500)
-      .json({ error: "Error consuming messages from queue" });
   }
-});
+
+})
+
+
+
+//  stop  crawler Engine
+app.post("/stop-engine", async (req, res) => {
+  try {
+
+    Cluster.close().then(() => {
+      console.log('STOP_ENGINE')
+      process.exit(0);
+    });
+    res.send("engine stopped successful");
+  } catch (err) {
+    res.status(500).send('Error stopping engine.');
+  }
+})
+
+
+// clear database
+app.delete("/clear-database", async (req, res) => {
+  try {
+    // Clear all documents in the 
+    await Page.deleteMany({});
+    res.send('Database cleared successfully.');
+  } catch (err) {
+    res.status(500).send('Error clearing database.');
+  }
+})
+
+
 
 app.listen(4000, () => {
-  console.log("Server listening on port 4000");
-});
+  console.log("server running on port 4000")
+})
