@@ -6,14 +6,14 @@ const { Cluster } = require("puppeteer-cluster");
 
 const rabbitUrl =
     "amqps://abtelwui:Bihbk5TijVstBW0hMGUr_stRDimNbzqn@shrimp.rmq.cloudamqp.com/abtelwui";
-    // api key for ip rotation from scrapingbee.com 
+// api key for ip rotation from scrapingbee.com 
 const scrapingBeeApiKey =
-"00QMWSF4QWATW8RYU76UUVZO0ZFXSLZGXNO3LRGC3JFERNTQ7W33L1VWGMCCNKFXQ6DF8ZIDDL4M1WR9";
+    "00QMWSF4QWATW8RYU76UUVZO0ZFXSLZGXNO3LRGC3JFERNTQ7W33L1VWGMCCNKFXQ6DF8ZIDDL4M1WR9";
 // website for validating ip address
 const Ipurl = "https://lumtest.com/myip.json";
 
 // crawler function
-crawlerEngine = async (CLUSTER, url, maxDepth, status) => {
+crawlerEngine = async (url, maxDepth) => {
     try {
         // Connect to MongoDB
         await mongoose
@@ -66,10 +66,10 @@ crawlerEngine = async (CLUSTER, url, maxDepth, status) => {
                 // res.status(500).send("Error publishing message to RabbitMQ");
             });
 
-            // initialising puppeteer cluster 
-        const cluster = await CLUSTER.launch({
-            concurrency: CLUSTER.CONCURRENCY_CONTEXT,
-            maxConcurrency: 10,
+        // initialising puppeteer cluster 
+        const cluster = await Cluster.launch({
+            concurrency: Cluster.CONCURRENCY_CONTEXT,
+            maxConcurrency: 1,
             puppeteerOptions: {
                 headless: true,
                 args: [
@@ -84,12 +84,12 @@ crawlerEngine = async (CLUSTER, url, maxDepth, status) => {
         // per task 
         cluster.task(async ({ page, data: url }) => {
 
-        //   crawling the url
+            //   crawling the url
             await page.goto(url);
 
 
 
-        //    getting the page content 
+            //    getting the page content 
             const title = await page.title();
             const header = await page.$eval("h1", (el) => el.textContent.trim());
             const urls = await page.$$eval("a", (links) => links.map((a) => a.href));
@@ -106,7 +106,7 @@ crawlerEngine = async (CLUSTER, url, maxDepth, status) => {
                 urls,
             });
             await pageDoc.save();
-            
+
 
             // maxdepth is the user specified input 
             // Recursively crawl each newly discovered URL, but only if the current depth is less than the maximum depth
@@ -116,10 +116,6 @@ crawlerEngine = async (CLUSTER, url, maxDepth, status) => {
                 }
             }
         });
-
-
-
-
 
         cluster.queue(url);
 
@@ -131,8 +127,6 @@ crawlerEngine = async (CLUSTER, url, maxDepth, status) => {
     }
 };
 
-// crawlerEngine("https://www.example.com/", 3)
 
 module.exports = { crawlerEngine };
 
-// crawlerEngine('https://example.com', 1);
