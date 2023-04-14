@@ -1,5 +1,6 @@
 const { Page } = require("./Model");
 const mongoose = require("mongoose");
+
 const scrapingBeeApiKey =
     "00QMWSF4QWATW8RYU76UUVZO0ZFXSLZGXNO3LRGC3JFERNTQ7W33L1VWGMCCNKFXQ6DF8ZIDDL4M1WR9";
 const axios = require("axios");
@@ -7,6 +8,7 @@ const Ipurl = "https://lumtest.com/myip.json";
 const amqp = require("amqplib");
 const rabbitUrl =
     "amqps://abtelwui:Bihbk5TijVstBW0hMGUr_stRDimNbzqn@shrimp.rmq.cloudamqp.com/abtelwui";
+
 crawlerEngine = async (CLUSTER, url, maxDepth, status) => {
     try {
         // Connect to MongoDB
@@ -60,7 +62,7 @@ crawlerEngine = async (CLUSTER, url, maxDepth, status) => {
             concurrency: CLUSTER.CONCURRENCY_CONTEXT,
             maxConcurrency: 1,
             puppeteerOptions: {
-                headless: true,
+                headless: false,
                 args: [
                     `--proxy-server =${`http://${Ip} `}`,
                     "--no-sandbox",
@@ -69,15 +71,15 @@ crawlerEngine = async (CLUSTER, url, maxDepth, status) => {
             },
         });
 
-        cluster.task(async ({ page, data: url }) => {
-
+        cluster.task(async ({ page, data }) => {
+            const { url, taskDepth } = data;
 
             await page.goto(url);
 
-
             const title = await page.title();
             const header = await page.$eval("h1", (el) => el.textContent.trim());
-            const urls = await page.$$eval("a", (links) => links.map((a) => a.href));
+            let urls = await page.$$eval("a", (links) => links.map((a) => a.href));
+            urls = [...new Set(urls.filter((url) => url.startsWith("http")))];
 
             console.log(header);
             console.log(title)
@@ -90,24 +92,26 @@ crawlerEngine = async (CLUSTER, url, maxDepth, status) => {
                 header,
                 urls,
             });
+
             await pageDoc.save();
 
             // Recursively crawl each newly discovered URL, but only if the current depth is less than the maximum depth
-            if (depth < maxDepth) {
+            if (taskDepth < maxDepth) {
                 for (const newUrl of urls) {
-                    cluster.queue(newUrl);
+                    cluster.queue({ url: newUrl, taskDepth: taskDepth + 1 });
                 }
             }
         });
 
 
 
-        cluster.queue(url);
+        cluster.queue({ url, taskDepth: depth });
 
 
         await cluster.idle();
         await cluster.close();
     } catch (error) {
+        console.log("There is error")
         console.error(error);
     }
 };
