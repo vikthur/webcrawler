@@ -7,12 +7,14 @@ const dotenv = require("dotenv");
 const { upload } = require('./cloudinary');
 dotenv.config();
 
+
+// router for captcha demo 
 router.get("/", (req, res) => {
     puppeteer.use(
         RecaptchaPlugin({
             provider: {
-                id: '2captcha',
-                token: '2f097ea32abd9f7934cfea6e047d08a1' // REPLACE THIS WITH YOUR OWN 2CAPTCHA API KEY ⚡
+                id: '2captcha',  //id for human service for captcha solving
+                token: '2f097ea32abd9f7934cfea6e047d08a1' // api key
             },
             visualFeedback: true // colorize reCAPTCHAs (violet = detected, green = solved)
         })
@@ -30,6 +32,7 @@ router.get("/", (req, res) => {
                 page.waitForNavigation(),
                 page.click(`#recaptcha-demo-submit`)
             ])
+
             const screenshot = await page.screenshot({ path: 'response.png', fullPage: true, encoding: 'utf8' })
             const cloudFile = await upload("./response.png")
             res.status(200).json({ url: cloudFile.url })
