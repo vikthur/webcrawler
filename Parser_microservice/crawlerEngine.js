@@ -15,7 +15,7 @@ const rabbitUrl =
     "amqps://abtelwui:Bihbk5TijVstBW0hMGUr_stRDimNbzqn@shrimp.rmq.cloudamqp.com/abtelwui";
 
 // crawler function
-crawlerEngine = async (CLUSTER, url, maxDepth, status) => {
+crawlerEngine = async (url, maxDepth) => {
     try {
         // Connect to MongoDB
         await mongoose
