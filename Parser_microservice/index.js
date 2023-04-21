@@ -21,7 +21,7 @@ mongoose.connect("mongodb+srv://web_crawler:JY2UeSsoHDuntlEJ@cluster0.mnmpkso.mo
   })
 
 
-  // cross origin access
+// cross origin access
 app.use(cors())
 
 
@@ -42,11 +42,11 @@ app.get("/", async (req, res) => {
 
 
     // calling the crawler function
-    crawlerEngine( url, depth)
+    crawlerEngine(url, depth)
 
     // push the current ip the crawler will work with
 
-    
+
     await amqp.connect(rabbitUrl).then(async (conn) => {
       await conn.createChannel().then(async (channel) => {
         const queueName = 'myQueue';
@@ -88,6 +88,8 @@ app.get("/urls", async (req, res) => {
       .limit(limit * 1)
       .skip((page - 1) * limit)
       .exec();
+
+    const count = await Page.countDocuments();
 
 
     res.json({
