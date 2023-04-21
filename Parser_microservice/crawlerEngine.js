@@ -69,8 +69,8 @@ crawlerEngine = async (CLUSTER, url, maxDepth, status) => {
             });
 
             // initialising puppeteer cluster 
-        const cluster = await CLUSTER.launch({
-            concurrency: CLUSTER.CONCURRENCY_CONTEXT,
+        const cluster = await Cluster.launch({
+            concurrency: Cluster.CONCURRENCY_CONTEXT,
             maxConcurrency: 10,
             puppeteerOptions: {
                 headless: false,
