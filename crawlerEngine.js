@@ -10,6 +10,8 @@ crawlerEngine = async (url, maxDepth, ip) => {
       `--proxy-server =${`http://${ip} `}`,
       "--no-sandbox",
       "--disable-setuid-sandbox",
+      "--single-process",
+      "--no-zygote",
     ],
     ignoreHTTPSErrors: true,
   });
