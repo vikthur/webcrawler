@@ -4,7 +4,7 @@ const { upload } = require("./cloudinary");
 async function solveRecaptcha(url, res) {
   try {
     const browser = await puppeteer.launch({
-      headless: false,
+      headless: true,
       args: [
         `--proxy-server =${`http://${ip} `}`,
         "--no-sandbox",
