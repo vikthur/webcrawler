@@ -2,13 +2,11 @@ const express = require("express");
 const { crawlerEngine } = require("./crawlerEngine");
 const app = express();
 const { Page } = require("./Model");
-const mongoose = require("mongoose");
 const cors = require("cors");
-const amqp = require("amqplib");
-
-// rabbit mq connection string
-const rabbitUrl =
-  "amqps://abtelwui:Bihbk5TijVstBW0hMGUr_stRDimNbzqn@shrimp.rmq.cloudamqp.com/abtelwui";
+const { scrapingBeeApiKey, Ipurl } = require("./helperFunctions/data");
+const { solveRecaptcha } = require("./updated_captcha");
+const axios = require("axios");
+const mongoose = require("mongoose");
 // Connect to MongoDB
 mongoose
   .connect(
@@ -25,51 +23,24 @@ mongoose
     console.error(err);
   });
 
-// cross origin access
 app.use(cors());
 
-//  route for solving  captcha
-const captchaRouter = require("./capt");
-app.use("/solve-captcha", captchaRouter);
-
-// main route for starting the crawler
+// web_crawler_endpoint
 app.get("/", async (req, res) => {
-  // collect user input for crawler
   const url = req.query.url || "https://example.com";
   const depth = parseInt(req.query.depth) || 10;
 
   try {
+    const response = await axios.get(
+      `https://app.scrapingbee.com/api/v1?url=${Ipurl}&api_key=${scrapingBeeApiKey}&render_js=false&session_id=${Math.ceil(
+        Math.random() * 10000000
+      )}`
+    );
+
     // calling the crawler function
-    crawlerEngine(url, depth);
+    await crawlerEngine(url, depth, response.data.ip);
 
-    // push the current ip the crawler will work with
-
-    await amqp
-      .connect(rabbitUrl)
-      .then(async (conn) => {
-        await conn.createChannel().then(async (channel) => {
-          const queueName = "myQueue";
-
-          await channel.assertQueue(queueName, { durable: false });
-
-          // consuming ip from crawler
-          await channel.consume(
-            queueName,
-            (msg) => {
-              const message = msg.content.toString();
-
-              // sending the ip to the frontend
-              res.send({ ip: message, message: "crawler engine initiated" });
-
-              console.log("Received message:", message);
-            },
-            { noAck: true }
-          );
-        });
-      })
-      .catch((err) => {
-        console.error("Error connecting to RabbitMQ:", err);
-      });
+    res.status(200).json({ message: "crawler_started", ip: response.data.ip });
   } catch (error) {
     console.log(error);
   }
@@ -106,6 +77,15 @@ app.delete("/clear-database", async (req, res) => {
     res.send("Database cleared successfully.");
   } catch (err) {
     res.status(500).send("Error clearing database.");
+  }
+});
+
+app.get("/recaptcha_demo", async (req, res) => {
+  const { rootUrl } = req.query;
+  try {
+    const url = await solveRecaptcha(rootUrl, res);
+  } catch (error) {
+    console.log(error);
   }
 });
 
