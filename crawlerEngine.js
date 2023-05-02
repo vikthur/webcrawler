@@ -1,74 +1,78 @@
+const puppeteer = require("puppeteer");
 const { Page } = require("./Model");
-const { Cluster } = require("puppeteer-cluster");
 
 // crawler function
 crawlerEngine = async (url, maxDepth, ip) => {
+  // initialising puppeteer
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: [
+      `--proxy-server =${`http://${ip} `}`,
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--single-process",
+      "--no-zygote",
+    ],
+    ignoreHTTPSErrors: true,
+  });
+
   try {
-    // initialising puppeteer cluster
-    const cluster = await Cluster.launch({
-      concurrency: Cluster.CONCURRENCY_CONTEXT,
-      maxConcurrency: 1,
-      monitor: false,
-      puppeteerOptions: {
-        headless: true,
-        args: [
-          `--proxy-server =${`http://${ip} `}`,
-          "--no-sandbox",
-          "--disable-setuid-sandbox",
-        ],
-      },
-    });
+    const visitedUrls = new Set([url]);
+    const linksToVisit = [url];
     let pageCount = 0;
-    // per task
-    await cluster.task(async ({ page, data: url }) => {
-      const visitedUrls = new Set([url]);
-      const linksToVisit = [url];
-      while (pageCount < maxDepth && linksToVisit.length > 0) {
-        pageCount++;
 
-        const currentUrl = linksToVisit.shift();
+    while (pageCount < maxDepth && linksToVisit.length > 0) {
+      pageCount++;
 
-        try {
-          await page.goto(currentUrl);
+      const currentUrl = linksToVisit.shift();
+      const page = await browser.newPage();
 
-          const linksOnPage = await page.$$eval("a", (anchors) =>
-            anchors.map((anchor) => anchor.href)
-          );
+      try {
+        await page.goto(currentUrl);
 
-          const title = await page.title();
-          const header = await page.$eval("h1", (el) => el.textContent.trim());
+        const title = await page.title();
+        const header = await page.$eval("h1", (el) => el.textContent.trim());
+        let linksOnPage = await page.$$eval("a", (anchors) =>
+          anchors.map((anchor) => anchor.href)
+        );
 
-          console.log(header, "HEADER");
-          console.log(title, "TITLE");
-          console.log(linksOnPage, "LINKS_ON_PAGE");
-          const pageDoc = new Page({
-            url,
-            title,
-            header,
-            linksOnPage,
-          });
-          await pageDoc.save();
-
-          linksOnPage.forEach((link) => {
-            if (!visitedUrls.has(link)) {
-              visitedUrls.add(link);
-              linksToVisit.push(link);
-            }
-          });
-        } catch (error) {
-          console.error(`Error while crawling ${currentUrl}: ${error.message}`);
+        function getUniqueUrls(urls) {
+          return Array.from(new Set(urls));
         }
 
-        console.log(`Current page: ${pageCount}`);
+        linksOnPage = getUniqueUrls(linksOnPage);
+
+        console.log(linksOnPage);
+
+        const pageDoc = new Page({
+          url,
+          title,
+          header,
+          linksOnPage,
+        });
+
+        await pageDoc.save();
+
+        linksOnPage.forEach((link) => {
+          if (!visitedUrls.has(link)) {
+            visitedUrls.add(link);
+            linksToVisit.push(link);
+          }
+        });
+      } catch (error) {
+        console.error(`Error while crawling ${currentUrl}: ${error.message}`);
       }
-    });
 
-    await cluster.queue(url);
+      console.log(`Current page: ${pageCount}`);
 
-    await cluster.idle();
-    await cluster.close();
+      await page.close();
+    }
+
+    await browser.close();
   } catch (error) {
     console.error(error, "@errorcRAWLER");
+  } finally {
+    await browser.close();
   }
 };
 

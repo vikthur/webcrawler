@@ -4,7 +4,17 @@ const { upload } = require("./cloudinary");
 async function solveRecaptcha(url, res) {
   try {
     const browser = await puppeteer.launch({
-      headless: false,
+      headless: true,
+      args: [
+        `--proxy-server =${`http://${ip} `}`,
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+      ],
+      ignoreHTTPSErrors: true,
+      executablePath:
+        process.env.NODE_ENV === "production"
+          ? process.env.PUPPETEER_EXECUTABLE_PATH
+          : puppeteer.executablePath(),
     });
 
     const page = await browser.newPage();
@@ -67,22 +77,15 @@ async function solveRecaptcha(url, res) {
     });
 
     const cloudFile = await upload("response.png");
-    // console.log(dataSiteKeys);
-    // console.log(cloudFile.url);
+
     await browser.close();
     res.send(cloudFile.url);
     return cloudFile.url;
   } catch (e) {
     console.log(e);
+  } finally {
+    await browser.close();
   }
 }
 
 module.exports = { solveRecaptcha };
-
-// Example usage:
-// const url = "https://app.scrapingbee.com/account/register";
-
-// const url = "https://recaptcha-demo.appspot.com/recaptcha-v2-checkbox.php";
-// solveRecaptcha(url)
-//   .then((dataSiteKeys) => console.log(dataSiteKeys))
-//   .catch((error) => console.error(error));
