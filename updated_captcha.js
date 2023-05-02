@@ -5,6 +5,11 @@ async function solveRecaptcha(url, res) {
   try {
     const browser = await puppeteer.launch({
       headless: false,
+      args: [
+        `--proxy-server =${`http://${ip} `}`,
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+      ],
     });
 
     const page = await browser.newPage();
