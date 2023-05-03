@@ -56,8 +56,3 @@ Duplicate Checker Function:
 // save the urls gotten from the root url.
 // push the url to the queue to scraped again.
 // result pushed to the user_UI_frontend.
-
-PARSER_MICROSERVICE_PORT = 5003
-API_KEY = 00QMWSF4QWATW8RYU76UUVZO0ZFXSLZGXNO3LRGC3JFERNTQ7W33L1VWGMCCNKFXQ6DF8ZIDDL4M1WR9
-
-# PORT_NUM = 4000
