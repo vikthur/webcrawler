@@ -4,19 +4,24 @@ const { Page } = require("./Model");
 let chrome = {};
 let puppeteer;
 
-if (process.env.AWS_LAMBDA_FUNCTION_VERSION) {
-  chrome = require("chrome-aws-lambda");
-  puppeteer = require("puppeteer-core");
-} else {
-  puppeteer = require("puppeteer");
-}
+// if (process.env.AWS_LAMBDA_FUNCTION_VERSION) {
+chrome = require("chrome-aws-lambda");
+puppeteer = require("puppeteer-core");
+// } else {
+// puppeteer = require("puppeteer");
+// }
 // crawler function
 crawlerEngine = async (url, maxDepth, ip) => {
   let options = {};
 
   if (process.env.AWS_LAMBDA_FUNCTION_VERSION) {
     options = {
-      args: [...chrome.args, "--hide-scrollbars", "--disable-web-security"],
+      args: [
+        ...chrome.args,
+        "--hide-scrollbars",
+        "--disable-web-security",
+        `--proxy-server =${`http://${ip} `}`,
+      ],
       defaultViewport: chrome.defaultViewport,
       executablePath: await chrome.executablePath,
       headless: true,
@@ -86,4 +91,4 @@ crawlerEngine = async (url, maxDepth, ip) => {
   }
 };
 
-module.exports = { crawlerEngine };
+module.exports = crawlerEngine;
