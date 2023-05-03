@@ -1,24 +1,30 @@
-const puppeteer = require("puppeteer");
+const dotenv = require("dotenv");
+dotenv.config();
 const { Page } = require("./Model");
+let chrome = {};
+let puppeteer;
 
+if (process.env.AWS_LAMBDA_FUNCTION_VERSION) {
+  chrome = require("chrome-aws-lambda");
+  puppeteer = require("puppeteer-core");
+} else {
+  puppeteer = require("puppeteer");
+}
 // crawler function
 crawlerEngine = async (url, maxDepth, ip) => {
-  // initialising puppeteer
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: [
-      `--proxy-server =${`http://${ip} `}`,
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--single-process",
-      "--no-zygote",
-    ],
-    ignoreHTTPSErrors: true,
-    executablePath:
-      process.env.NODE_ENV === "production"
-        ? process.env.PUPPETEER_EXECUTABLE_PATH
-        : puppeteer.executablePath(),
-  });
+  let options = {};
+
+  if (process.env.AWS_LAMBDA_FUNCTION_VERSION) {
+    options = {
+      args: [...chrome.args, "--hide-scrollbars", "--disable-web-security"],
+      defaultViewport: chrome.defaultViewport,
+      executablePath: await chrome.executablePath,
+      headless: true,
+      ignoreHTTPSErrors: true,
+    };
+  }
+
+  let browser = await puppeteer.launch(options);
 
   try {
     const visitedUrls = new Set([url]);
