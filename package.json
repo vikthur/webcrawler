@@ -1,10 +1,10 @@
 {
-  "name": "parser_microservice",
+  "name": "web crawler",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "node index.js",
+    "dev": "node index",
     "start": "node index"
   },
   "keywords": [],
