@@ -3,19 +3,17 @@ const { crawlerEngine } = require("./crawlerEngine");
 const app = express();
 const { Page } = require("./Model");
 const cors = require("cors");
-const { scrapingBeeApiKey, Ipurl } = require("./helperFunctions/data");
 const { solveRecaptcha } = require("./updated_captcha");
 const axios = require("axios");
 const mongoose = require("mongoose");
+const dotenv = require("dotenv");
+dotenv.config();
 // Connect to MongoDB
 mongoose
-  .connect(
-    "mongodb+srv://web_crawler:JY2UeSsoHDuntlEJ@cluster0.mnmpkso.mongodb.net/?retryWrites=true&w=majority",
-    {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    }
-  )
+  .connect(process.env.MONGO_DB, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
   .then(() => {
     console.log("Connected to database");
   })
@@ -30,11 +28,13 @@ app.get("/", async (req, res) => {
   const url = req.query.url || "https://example.com";
   const depth = parseInt(req.query.depth) || 10;
 
+  console.log(url, "url");
+
   try {
     const response = await axios.get(
-      `https://app.scrapingbee.com/api/v1?url=${Ipurl}&api_key=${scrapingBeeApiKey}&render_js=false&session_id=${Math.ceil(
-        Math.random() * 10000000
-      )}`
+      `https://app.scrapingbee.com/api/v1?url=${process.env.IPURL}&api_key=${
+        process.env.SCRAPING_BEE_API_KEY
+      }&render_js=false&session_id=${Math.ceil(Math.random() * 10000000)}`
     );
 
     // calling the crawler function
@@ -84,6 +84,8 @@ app.get("/recaptcha_demo", async (req, res) => {
   const { rootUrl } = req.query;
   try {
     const url = await solveRecaptcha(rootUrl, res);
+    console.log(url);
+    res.send(url);
   } catch (error) {
     console.log(error);
   }

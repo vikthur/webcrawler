@@ -14,10 +14,10 @@ crawlerEngine = async (url, maxDepth, ip) => {
       "--no-zygote",
     ],
     ignoreHTTPSErrors: true,
-    executablePath:
-      process.env.NODE_ENV === "production"
-        ? process.env.PUPPETEER_EXECUTABLE_PATH
-        : puppeteer.executablePath(),
+    // executablePath:
+    //   process.env.NODE_ENV === "production"
+    //     ? process.env.PUPPETEER_EXECUTABLE_PATH
+    //     : puppeteer.executablePath(),
   });
 
   try {
@@ -45,7 +45,9 @@ crawlerEngine = async (url, maxDepth, ip) => {
         }
 
         linksOnPage = getUniqueUrls(linksOnPage);
-
+        console.log(currentUrl, "currenturl");
+        console.log(title, "page TITLE");
+        console.log(header, "PAGE HEADER");
         console.log(linksOnPage);
 
         const pageDoc = new Page({
@@ -71,7 +73,6 @@ crawlerEngine = async (url, maxDepth, ip) => {
 
       await page.close();
     }
-
     await browser.close();
   } catch (error) {
     console.error(error, "@errorcRAWLER");

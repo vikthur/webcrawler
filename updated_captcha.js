@@ -1,20 +1,27 @@
 const puppeteer = require("puppeteer");
 const Captcha = require("2captcha");
 const { upload } = require("./cloudinary");
-async function solveRecaptcha(url, res) {
+const axios = require("axios");
+const dotenv = require("dotenv");
+dotenv.config();
+async function solveRecaptcha(url, ip, res) {
   try {
+    const response = await axios.get(
+      `https://app.scrapingbee.com/api/v1?url=${process.env.IPURL}&api_key=${
+        process.env.SCRAPING_BEE_API_KEY
+      }&render_js=false&session_id=${Math.ceil(Math.random() * 10000000)}`
+    );
+
+    console.log(response);
     const browser = await puppeteer.launch({
-      headless: true,
+      headless: false,
       args: [
-        `--proxy-server =${`http://${ip} `}`,
+        `--proxy-server =${`http://${response.data.ip} `}`,
         "--no-sandbox",
         "--disable-setuid-sandbox",
       ],
       ignoreHTTPSErrors: true,
-      executablePath:
-        process.env.NODE_ENV === "production"
-          ? process.env.PUPPETEER_EXECUTABLE_PATH
-          : puppeteer.executablePath(),
+      executablePath: puppeteer.executablePath(),
     });
 
     const page = await browser.newPage();
@@ -78,14 +85,14 @@ async function solveRecaptcha(url, res) {
 
     const cloudFile = await upload("response.png");
 
-    await browser.close();
-    res.send(cloudFile.url);
+    // await browser.close();
     return cloudFile.url;
   } catch (e) {
     console.log(e);
-  } finally {
-    await browser.close();
   }
+  // finally {
+  //   await browser.close();
+  // }
 }
 
 module.exports = { solveRecaptcha };
