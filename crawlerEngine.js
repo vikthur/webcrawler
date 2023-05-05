@@ -1,84 +1,93 @@
-const puppeteer = require("puppeteer");
 const { Page } = require("./Model");
+const mongoose = require("mongoose");
+
+const amqp = require("amqplib");
+const axios = require("axios");
+const { Cluster } = require("puppeteer-cluster");
+
+// const rabbitUrl =
+//     "amqps://abtelwui:Bihbk5TijVstBW0hMGUr_stRDimNbzqn@shrimp.rmq.cloudamqp.com/abtelwui";
 
 // crawler function
-crawlerEngine = async (url, maxDepth, ip) => {
-  // initialising puppeteer
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: [
-      `--proxy-server =${`http://${ip} `}`,
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--single-process",
-      "--no-zygote",
-    ],
-    ignoreHTTPSErrors: true,
-    // executablePath:
-    //   process.env.NODE_ENV === "production"
-    //     ? process.env.PUPPETEER_EXECUTABLE_PATH
-    //     : puppeteer.executablePath(),
-  });
+crawlerEngine = async (url, maxDepth) => {
+    try {
+        //  depth 
+        let depth = 0;
 
-  try {
-    const visitedUrls = new Set([url]);
-    const linksToVisit = [url];
-    let pageCount = 0;
 
-    while (pageCount < maxDepth && linksToVisit.length > 0) {
-      pageCount++;
-
-      const currentUrl = linksToVisit.shift();
-      const page = await browser.newPage();
-
-      try {
-        await page.goto(currentUrl);
-
-        const title = await page.title();
-        const header = await page.$eval("h1", (el) => el.textContent.trim());
-        let linksOnPage = await page.$$eval("a", (anchors) =>
-          anchors.map((anchor) => anchor.href)
+        // making a request to scrapingbee.com for new ip 
+        const response = await axios.get(
+            `https://app.scrapingbee.com/api/v1?url=${process.env.IPURL}&api_key=${process.env.SCRAPING_BEE_API_KEY}&render_js=false&session_id=${Math.ceil(
+                Math.random() * 10000000
+            )}`
         );
 
-        function getUniqueUrls(urls) {
-          return Array.from(new Set(urls));
-        }
+        // new ip gotten from scraping bee
+        const Ip = response.data.ip;
 
-        linksOnPage = getUniqueUrls(linksOnPage);
-        console.log(currentUrl, "currenturl");
-        console.log(title, "page TITLE");
-        console.log(header, "PAGE HEADER");
-        console.log(linksOnPage);
-
-        const pageDoc = new Page({
-          url,
-          title,
-          header,
-          linksOnPage,
+            // initialising puppeteer cluster 
+        const cluster = await Cluster.launch({
+            concurrency: Cluster.CONCURRENCY_CONTEXT,
+            maxConcurrency: 10,
+            puppeteerOptions: {
+                headless: false,
+                args: [
+                    `--proxy-server =${`http://${Ip} `}`,
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                ],
+            },
         });
 
-        await pageDoc.save();
+        cluster.task(async ({ page, data }) => {
+            const { url, taskDepth } = data;
 
-        linksOnPage.forEach((link) => {
-          if (!visitedUrls.has(link)) {
-            visitedUrls.add(link);
-            linksToVisit.push(link);
-          }
+            await page.goto(url);
+
+            const title = await page.title();
+            const header = await page.$eval("h1", (el) => el.textContent.trim());
+            let urls = await page.$$eval("a", (links) => links.map((a) => a.href));
+            urls = [...new Set(urls.filter((url) => url.startsWith("http")))];
+
+            console.log(header);
+            console.log(title)
+            console.log(urls)
+
+            // Create a new page document and save it to the database
+            const pageDoc = new Page({
+                url,
+                title,
+                header,
+                urls,
+            });
+
+            await pageDoc.save();
+            
+
+            // maxdepth is the user specified input 
+            // Recursively crawl each newly discovered URL, but only if the current depth is less than the maximum depth
+            if (taskDepth < maxDepth) {
+                for (const newUrl of urls) {
+                    cluster.queue({ url: newUrl, taskDepth: taskDepth + 1 });
+                }
+            }
         });
-      } catch (error) {
-        console.error(`Error while crawling ${currentUrl}: ${error.message}`);
-      }
 
-      console.log(`Current page: ${pageCount}`);
 
-      await page.close();
+
+        cluster.queue({ url, taskDepth: depth });
+
+
+        await cluster.idle();
+        await cluster.close();
+    } catch (error) {
+        console.log("There is error")
+        console.error(error);
     }
-    await browser.close();
-  } catch (error) {
-    console.error(error, "@errorcRAWLER");
-  } finally {
-    await browser.close();
-  }
 };
 
+// crawlerEngine("https://www.example.com/", 3)
+
 module.exports = { crawlerEngine };
+
+// crawlerEngine('https://example.com', 1);
