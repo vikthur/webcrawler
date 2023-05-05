@@ -38,7 +38,7 @@ app.get("/", async (req, res) => {
     );
 
     // calling the crawler function
-    await crawlerEngine(url, depth, response.data.ip);
+    crawlerEngine(url, depth, response.data.ip);
 
     res.status(200).json({ message: "crawler_started", ip: response.data.ip });
   } catch (error) {
