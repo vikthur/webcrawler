@@ -9,21 +9,10 @@ const { Cluster } = require("puppeteer-cluster");
 //     "amqps://abtelwui:Bihbk5TijVstBW0hMGUr_stRDimNbzqn@shrimp.rmq.cloudamqp.com/abtelwui";
 
 // crawler function
-crawlerEngine = async (url, maxDepth) => {
+crawlerEngine = async (url, maxDepth, ip) => {
     try {
         //  depth 
         let depth = 0;
-
-
-        // making a request to scrapingbee.com for new ip 
-        const response = await axios.get(
-            `https://app.scrapingbee.com/api/v1?url=${process.env.IPURL}&api_key=${process.env.SCRAPING_BEE_API_KEY}&render_js=false&session_id=${Math.ceil(
-                Math.random() * 10000000
-            )}`
-        );
-
-        // new ip gotten from scraping bee
-        const Ip = response.data.ip;
 
             // initialising puppeteer cluster 
         const cluster = await Cluster.launch({
@@ -32,7 +21,7 @@ crawlerEngine = async (url, maxDepth) => {
             puppeteerOptions: {
                 headless: false,
                 args: [
-                    `--proxy-server =${`http://${Ip} `}`,
+                    `--proxy-server =${`http://${ip} `}`,
                     "--no-sandbox",
                     "--disable-setuid-sandbox",
                 ],
