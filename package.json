@@ -4,15 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "node index",
     "start": "node index"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "engines": {
-    "node": "^14"
-  },
   "dependencies": {
     "2captcha": "^3.0.5",
     "amqplib": "^0.10.3",
