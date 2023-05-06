@@ -12,7 +12,7 @@ async function solveRecaptcha(url, ip, res) {
       }&render_js=false&session_id=${Math.ceil(Math.random() * 10000000)}`
     );
 
-    console.log(response);
+    // console.log(response);
     const browser = await puppeteer.launch({
       headless: false,
       args: [
@@ -57,13 +57,13 @@ async function solveRecaptcha(url, ip, res) {
       elements.map((element) => element.getAttribute("data-sitekey"))
     );
 
-    const solver = new Captcha.Solver("2f097ea32abd9f7934cfea6e047d08a1");
+    const solver = new Captcha.Solver(process.env.TWO_CAPTCHA_API_KEY);
 
     await solver
       .recaptcha(dataSiteKeys.toString(), url)
 
       .then(async (res) => {
-        console.log(res);
+        // console.log(res);
 
         const gRecaptchaResponseElement = await page.evaluateHandle(() =>
           document.getElementById("g-recaptcha-response")
@@ -74,8 +74,9 @@ async function solveRecaptcha(url, ip, res) {
         );
       });
 
-    await page.keyboard.press("Enter");
-    await page.waitForNavigation();
+    // await page.keyboard.press("Enter");
+    await page.click('input[type="submit"]')
+    // await page.waitForNavigation();
 
     const screenshot = await page.screenshot({
       path: "response.png",
